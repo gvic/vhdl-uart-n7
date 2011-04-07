@@ -24,12 +24,12 @@ architecture TxUnit_impl of TxUnit is
   signal startTx : std_logic := '0';
 
   signal state : std_logic_vector(1 downto 0) := "00";
-  signal com_state : std_logic_vector(1 downto 0) := "00"; -- meant to be the same as above, but to communicate between the two process
+  signal com_state : std_logic_vector(1 downto 0) := "11"; -- meant to be the same as above, but to communicate between the two process
   signal state_tx : std_logic_vector(1 downto 0) := "00";
 begin
 
   -- initially txd = 1
-  txd <= '1';
+  --txd <= '1';
 
   -- initiate personnal signals
   bufE <= bufEPerso;
@@ -43,11 +43,11 @@ begin
       bufEPerso <= '1';
       regEPerso <= '1';
       state <= "00";
-		com_state <= "00";
       startTx <= '0';
     elsif clk'event and clk = '1' then  -- rising clock edge
       case state is
         when "00" =>                  -- idle
+		    startTx <= '0';
           if ld = '1' then
             buf <= data;
             bufEPerso <= '0';
@@ -62,15 +62,11 @@ begin
           startTx <= '1';          
         when others => null;
       end case;
-		case com_state is
-			when "00" =>
-				state <= "00";
-			when "01" =>
-				state <= "01";
-			when "10" =>
-				state <= "10";
-			when others => null;
-		end case;
+		if com_state = "00" then
+			state <= "00";
+		elsif com_state = "10" then
+			state <= "10";
+		end if;
     end if;
   end process;
 
@@ -85,7 +81,7 @@ begin
       state_tx <= "00";
       i := 7;
       parity := '0';
-      startTx <= '0';
+		com_state <= "11";
     elsif enable'event and enable = '1' then  -- rising clock edge
       if startTx = '1' then           -- Do we have to send something?
         case state_tx is
@@ -98,7 +94,6 @@ begin
             if i = 0 then
               i := 7;
               state_tx <= "10";
-              regEPerso <= '1';              -- The register is now empty!
             else
               i := i-1;              
             end if;
@@ -107,15 +102,14 @@ begin
             state_tx <= "11";
           when "11" =>                  -- Stop bit = '1' Tx and idle state
             txd <= '1';
-            startTx <= '0';             -- stop Transmission
             if regEPerso = '0' then
               state_tx <= "00";
-              startTx <= '1';           -- We can send again!
             elsif bufEPerso = '0' then
               com_state <= "10";             -- State from the first automat
             elsif bufEPerso = '1' then
               com_state <= "00";
             end if;            
+				com_state <= "11";
           when others => null;
         end case;
       end if;
