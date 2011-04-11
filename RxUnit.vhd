@@ -21,17 +21,31 @@ architecture RxUnit_impl of RXUnit is
 
 begin  -- RxUnit_impl
 
+
+  p_compteur16: process (enable, reset)
+    variable cptBit : integer := 0;     -- compte le nombre de bit recu
+    variable cptClk : integer := 0;     -- compte le nombre de top de enable
+  begin  -- process p_compteur16
+    if reset = '0' then                 -- asynchronous reset (active low)
+      cptClk := 0;
+      cptBit := 0;
+    elsif enable'event and enable = '1' then  -- rising clock edge
+      
+    end if;
+  end process p_compteur16;
+
+  
   -- purpose: automaton of reception control
   -- type   : combinational
   -- inputs : tmpclk
   -- outputs: 
-  reception_control: process (tmpclk,reset)
+  p_control: process (tmpclk,reset)
 
     signal control_state : std_logic_vector(1 downto 0) := "00";
     signal compteur : integer := 7;     -- needed for counting the 8 bits on tmprxd
     variable parity_calc : std_logic := '0';
     variable parity_recieved : std_logic;
-  begin  -- process reception_control
+  begin  -- process p_control
     if reset = '0' then                 -- asynchronous reset (active low)
       parity_calc := '0';      
     elsif tmpclk'event and tmpclk = '1' then  -- rising clock edge
@@ -68,7 +82,7 @@ begin  -- RxUnit_impl
         when others => null;
       end case;
     end if;
-  end process reception_control;
+  end process p_control;
 
 end RxUnit_impl;
 
