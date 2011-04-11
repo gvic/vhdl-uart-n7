@@ -19,17 +19,46 @@ end RXUnit;
 
 architecture RxUnit_impl of RXUnit is
 
+  signal tmpclk : std_logic;
+  signal tmprxd : std_logic;
+  signal fin_transmission : std_logic_vector(1 downto 0);
+  
 begin  -- RxUnit_impl
-
-
+  
   p_compteur16: process (enable, reset)
     variable cptBit : integer := 0;     -- compte le nombre de bit recu
     variable cptClk : integer := 0;     -- compte le nombre de top de enable
+    signal state : std_logic_vector(3 downto 0) := 000;  -- code les etats de l'automate
   begin  -- process p_compteur16
     if reset = '0' then                 -- asynchronous reset (active low)
       cptClk := 0;
       cptBit := 0;
+      state <= "000";
     elsif enable'event and enable = '1' then  -- rising clock edge
+      cptClk <= cptClk + 1;
+      case state is
+        when "000" =>
+          if rxd = '0' then
+            state <= "001";
+            cptClk := '0';        
+          end if;
+        when "001" =>
+          if cptClk > 7 then
+            state <= "010";
+            tmpclk <= '1';
+            cptClk := '0';
+          end if;
+        when "010" =>                   -- Etat fin transmission
+          if cptClk > 15 then           
+            tmpclk <= '1';
+            cptClk := '0';
+          end if;
+          if fin_transmission = "11" then
+            state <= "000";
+          end if;
+        when others => null;
+      end case;
+
       
     end if;
   end process p_compteur16;
@@ -41,23 +70,26 @@ begin  -- RxUnit_impl
   -- outputs: 
   p_control: process (tmpclk,reset)
 
-    signal control_state : std_logic_vector(1 downto 0) := "00";
+    signal state : std_logic_vector(1 downto 0) := "00";
     signal compteur : integer := 7;     -- needed for counting the 8 bits on tmprxd
     variable parity_calc : std_logic := '0';
     variable parity_recieved : std_logic;
   begin  -- process p_control
     if reset = '0' then                 -- asynchronous reset (active low)
-      parity_calc := '0';      
+      parity_calc := '0';
+      parity_recieved := '0';
+      compteur <= 0;
+      state <= "00";
     elsif tmpclk'event and tmpclk = '1' then  -- rising clock edge
-      case control_state is
+      case state is
         when "00" =>                      -- Waiting for start bit
           if tmprxd = '0' then
-            control_state <= "01";      -- Switch to datas reception state
+            state <= "01";      -- Switch to datas reception state
           end if;
         when "01" =>                    -- Reception of data bits and parity bit state
           if compteur = -1 then
           parity_recieved := rxd;
-          control_state <= "10";        -- Handling finished
+          state <= "10";        -- Handling finished
           elsif compteur < 0 then       -- Handled data reception
             data(compteur) <= rxd;
             parity_calc := parity_calc xor rxd;
