@@ -1,4 +1,4 @@
--- Time-stamp: <07/04/2011 11:46 paul.bonaud@etu.enseeiht.fr>
+-- Time-stamp: <11/04/2011 09:46 paul.bonaud@etu.enseeiht.fr>
 Library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.std_logic_arith.all;
@@ -47,7 +47,7 @@ begin
     elsif clk'event and clk = '1' then  -- rising clock edge
       case state is
         when "00" =>                  -- idle
-		    startTx <= '0';
+          startTx <= '0';
           if ld = '1' then
             buf <= data;
             bufEPerso <= '0';
@@ -59,14 +59,18 @@ begin
           bufEPerso <= '1';
           state <= "10";
         when "10" =>                  -- Register Filled
-          startTx <= '1';          
+          startTx <= '1';
+          state <= "11";
+        when "11" =>                    -- Wait other automate
+          if com_state = "01" then
+            regEPerso <= '1';            -- Finished Transmission
+            state <= "00";
+          --elsif com_state = "10" then
+          --  regEPerso <= '1';
+          --  state <= "10";
+          end if;          
         when others => null;
       end case;
-		if com_state = "00" then
-			state <= "00";
-		elsif com_state = "10" then
-			state <= "10";
-		end if;
     end if;
   end process;
 
@@ -81,11 +85,12 @@ begin
       state_tx <= "00";
       i := 7;
       parity := '0';
-		com_state <= "11";
+      com_state <= "11";
     elsif enable'event and enable = '1' then  -- rising clock edge
       if startTx = '1' then           -- Do we have to send something?
         case state_tx is
           when "00" =>                  -- Start bit = '0' Tx
+            com_state <= "11";
             txd <= '0';
             state_tx <= "01";
           when "01" =>                  -- Data Tx bit per bit
@@ -102,14 +107,10 @@ begin
             state_tx <= "11";
           when "11" =>                  -- Stop bit = '1' Tx and idle state
             txd <= '1';
-            if regEPerso = '0' then
+            if regEPerso = '0' then     -- Should always be done
               state_tx <= "00";
-            elsif bufEPerso = '0' then
-              com_state <= "10";             -- State from the first automat
-            elsif bufEPerso = '1' then
-              com_state <= "00";
+              com_state <= "01";
             end if;            
-				com_state <= "11";
           when others => null;
         end case;
       end if;
