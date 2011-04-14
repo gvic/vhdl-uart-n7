@@ -1,4 +1,4 @@
--- Time-stamp: <11/04/2011 09:46 paul.bonaud@etu.enseeiht.fr>
+-- Time-stamp: <14/04/2011 10:01 paul.bonaud@etu.enseeiht.fr>
 Library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.std_logic_arith.all;
@@ -23,8 +23,7 @@ architecture TxUnit_impl of TxUnit is
   signal regEPerso : std_logic := '1';
   signal startTx : std_logic := '0';
 
-  signal state : std_logic_vector(1 downto 0) := "00";
-  signal com_state : std_logic_vector(1 downto 0) := "11"; -- meant to be the same as above, but to communicate between the two process
+  signal state : std_logic_vector(1 downto 0) := "11";
   signal state_tx : std_logic_vector(1 downto 0) := "00";
 begin
 
@@ -41,34 +40,38 @@ begin
   begin  -- process
     if reset = '0' then               -- asynchronous reset (active low)
       bufEPerso <= '1';
-      regEPerso <= '1';
-      state <= "00";
+      state <= "11";
       startTx <= '0';
     elsif clk'event and clk = '1' then  -- rising clock edge
       case state is
-        when "00" =>                  -- idle
-          startTx <= '0';
-          if ld = '1' then
-            buf <= data;
-            bufEPerso <= '0';
-            state <= "01";
+        when "00" =>                  -- load Buffer
+          buf <= data;
+          bufEPerso <= '0';            
+          state <= "01";          
+        when "01" =>                  -- Buffer Filled, load reg
+          if regEPerso = '1' then
+            reg <= buf;
+            startTx <= '1';
+            --if startTx = '0' then
+            --  startTx <= '1';             
+            --end if;
+          else
+            if bufEPerso = '0' then
+            else            
+              bufEPerso <= '1';                        
+              state <= "11";
+            end if;
           end if;
-        when "01" =>                  -- Buffer Filled
-          reg <= buf;
-          regEPerso <= '0';
-          bufEPerso <= '1';
-          state <= "10";
-        when "10" =>                  -- Register Filled
-          startTx <= '1';
-          state <= "11";
-        when "11" =>                    -- Wait other automate
-          if com_state = "01" then
-            regEPerso <= '1';            -- Finished Transmission
+        when "11" =>                    -- Wait other automate (idle)
+          if ld = '1' then
             state <= "00";
-          --elsif com_state = "10" then
-          --  regEPerso <= '1';
-          --  state <= "10";
           end if;          
+          if regEPerso = '1' then       -- Other automate has finished
+            startTx <= '0';
+            if bufEPerso = '0' then
+              state <= "01";
+            end if;
+          end if;
         when others => null;
       end case;
     end if;
@@ -85,12 +88,12 @@ begin
       state_tx <= "00";
       i := 7;
       parity := '0';
-      com_state <= "11";
+      regEPerso <= '1';      
     elsif enable'event and enable = '1' then  -- rising clock edge
       if startTx = '1' then           -- Do we have to send something?
         case state_tx is
           when "00" =>                  -- Start bit = '0' Tx
-            com_state <= "11";
+            regEPerso <= '0';
             txd <= '0';
             state_tx <= "01";
           when "01" =>                  -- Data Tx bit per bit
@@ -107,10 +110,8 @@ begin
             state_tx <= "11";
           when "11" =>                  -- Stop bit = '1' Tx and idle state
             txd <= '1';
-            if regEPerso = '0' then     -- Should always be done
-              state_tx <= "00";
-              com_state <= "01";
-            end if;            
+            state_tx <= "00";
+            regEPerso <= '1';
           when others => null;
         end case;
       end if;
