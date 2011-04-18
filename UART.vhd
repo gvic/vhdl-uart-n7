@@ -47,6 +47,17 @@ architecture UARTunit_arch of UARTunit is
       enableRX   : out std_logic
       );
   end component;
+
+  component ctrlUnit is
+    port (
+      clk, reset       : in  std_logic;
+      rd, wr           : in  std_logic;
+      DRdy, FErr, OErr : in  std_logic;
+      BufE, RegE       : in  std_logic;
+      IntR             : out std_logic;
+      IntT             : out std_logic;
+      ctrlReg          : out std_logic_vector(7 downto 0));
+  end component;
   -- ----------------------
   
   signal lecture, ecriture : std_logic;
@@ -54,15 +65,33 @@ architecture UARTunit_arch of UARTunit is
   signal registre_controle : std_logic_vector(7 downto 0);
 
   -- a completer par les signaux internes manquants
+  signal clk, reset :    std_logic;
+  signal enableTX   :    std_logic;
+  signal enableRX   :    std_logic;
+  signal ld         :    std_logic;
+  signal regE       :    std_logic;
+  signal bufE       :    std_logic;
+  signal rd         :    std_logic;
+  signal FErr, OErr, DRdy : std_logic;
+  signal ctrlReg    :    std_logic_vector(7 downto 0);
 
-  begin  -- UARTunit_arch
-
-    lecture <= '1' when cs = '0' and rd = '0' else '0';
-    ecriture <= '1' when cs = '0' and wr = '0' else '0';
-    data_out <= donnees_recues when lecture = '1' and addr = "00"
-                else registre_controle when lecture = '1' and addr = "01"
-                else "00000000";
   
-    -- a completer par la connexion des differents composants
+  
+begin  -- UARTunit_arch
 
-  end UARTunit_arch;
+  lecture <= '1' when cs = '0' and rd = '0' else '0';
+  ecriture <= '1' when cs = '0' and wr = '0' else '0';
+  data_out <= donnees_recues when lecture = '1' and addr = "00"
+              else registre_controle when lecture = '1' and addr = "01"
+              else "00000000";
+  
+  -- a completer par la connexion des differents composants
+  ld <= not cs
+  
+  uniteHorloge: clkUnit port map (clk, reset, enableTX, enableRX);
+  uniteEmission: TxUnit port map (clk, reset, enableTX, ld, TxD, regE, bufE, data_in);
+  uniteReception: RxUnit port map (clk, reset, enableRX, rd, RxD, data_out);
+  uniteControl: ctrlUnit port map (clk, reset, rd, wr, DRdy, FErr, OErr, bufE, regE, IntR, IntT, ctrlReg);
+
+
+end UARTunit_arch;
