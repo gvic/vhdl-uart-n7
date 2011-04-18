@@ -28,6 +28,8 @@ architecture RxUnit_impl of RXUnit is
   signal control_state : std_logic_vector(1 downto 0) := "00";
   signal compteur : integer := 7;     -- needed for counting the 8 bits on tmprxd
 
+  signal sd : std_logic_vector(7 downto 0) := "00000000";  -- on stock le message recu dans ce signal avant de le transmettre au pocesseur
+
 
 begin  -- RxUnit_impl
   
@@ -42,10 +44,12 @@ begin  -- RxUnit_impl
       tmprxd <= '0';
       tmpclk <= '0';
       active_controller <= '0';
+      
     elsif enable'event and enable = '1' then  -- rising clock edge
       cptClk := cptClk + 1;
       active_controller <= '0';
       case cpt_state is
+        
         when "000" =>
           if rxd = '0' then
             cpt_state <= "001";
@@ -53,6 +57,7 @@ begin  -- RxUnit_impl
           else
             cpt_state <= "000";
           end if;
+          
         when "001" =>                   -- start bit reception
           if cptClk > 7 then
             cpt_state <= "010";
@@ -63,28 +68,25 @@ begin  -- RxUnit_impl
             tmpclk <= '0';
             cpt_state <= "001";
           end if;
+          
         when "010" =>                   -- Etat fin transmission
           if cptClk > 15 then           
             tmpclk <= '1';
             cptClk := 0;
-            if rd = '0' and compteur = -1 then -- si rd=0 et que les 8 bits on été recu
-              cpt_state <= "011";
-            elsif rd = '1' then
-              DRdy <= '0';
-              tmprxd <= rxd;
-            end if;
+            -- cpt_state <= "011";
+            tmprxd <= rxd;
           else
             tmpclk <= '0';
           end if;
           if fin_transmission = "11" then
             cpt_state <= "000";
           end if;
-        when "011" =>                   -- on attent un front montant d'horloge
-          if rd = '0' then              -- avant de mettre OErr a 1
-            OErr <= '1';
-          end if;
+          
+        when "011" =>                   
           cpt_state <= "000";
+          
         when others => null;
+                       
       end case;
 
       
@@ -105,35 +107,57 @@ begin  -- RxUnit_impl
       parity_recieved := '0';
       compteur <= 7;
       control_state <= "00";
+      DRdy <= '0';
+      OErr <= '0';
+      FErr <= '0';
     elsif tmpclk'event and tmpclk = '1' then  -- rising clock edge
       case control_state is
+        
         when "00" =>                      -- Waiting for start bit
           if tmprxd = '0' and compteur = 7 then
-            control_state <= "01";      -- Switch to datas reception control_state, on ne garde
-                                -- pas le bit de start, on conserve que les
-                                -- réelles données
+            control_state <= "01";      -- Switch to datas reception control_state
+            -- on ne garde pas le bit de start, on conserve que les données réellement utiles
           end if;
+          
         when "01" =>                    -- Reception of data bits and parity bit control_state
           if compteur = -1 then
-            parity_recieved := rxd;
-            control_state <= "10";        -- Handling finished
+            parity_recieved := tmprxd;  -- on recupere le bit de parité envoyé
+            control_state <= "10";
           else                -- Handled data reception
-            data(compteur) <= rxd;
-            parity_calc := parity_calc xor rxd;
+            sd(compteur) <= rxd;
+            parity_calc := parity_calc xor tmprxd;
             compteur <= compteur - 1;
           end if;
+          
         when "10" =>                    -- Stop bit reception control_state
-          if parity_recieved = parity_calc and rxd = '1' then
+          if parity_recieved = parity_calc and tmprxd = '1' then
+            FErr <= '0';
             Drdy <= '1';
+        
           else
             FErr <= '1';
+            Drdy <= '0';
           end if;
+
           control_state <= "11";
-        when "11" =>
+          
+        when "11" =>                    -- on attent un front montant d'horloge
+           if rd = '1' then
+              Drdy <= '0';
+              OErr <= '0';
+              data <= sd; 
+              -- il faut attendre un front montant de enable avant de mettre
+              -- OErr a 1
+           else
+             OErr <= '1';
+           end if;
+
           fin_transmission <= "11";
           control_state <= "00";
           compteur <= 7;
+          
         when others => null;
+                       
       end case;
     end if;
   end process p_control;
