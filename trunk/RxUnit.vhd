@@ -28,6 +28,9 @@ architecture RxUnit_impl of RXUnit is
   signal control_state : std_logic_vector(1 downto 0) := "00";
   signal compteur : integer := 7;     -- needed for counting the 8 bits on tmprxd
 
+  signal ask_for_enable_edge : std_logic := '0';
+  signal top_enable : std_logic := '0';
+
   signal sd : std_logic_vector(7 downto 0) := "00000000";  -- on stock le message recu dans ce signal avant de le transmettre au pocesseur
 
 
@@ -48,6 +51,11 @@ begin  -- RxUnit_impl
     elsif enable'event and enable = '1' then  -- rising clock edge
       cptClk := cptClk + 1;
       active_controller <= '0';
+      if ask_for_enable_edge = '1' then
+        top_enable <= '1';
+      else
+        top_enable <= '0';
+      end if;
       case cpt_state is
         
         when "000" =>
@@ -101,6 +109,7 @@ begin  -- RxUnit_impl
   p_control: process (tmpclk,reset)
     variable parity_calc : std_logic := '0';
     variable parity_recieved : std_logic;
+
   begin  -- process p_control
     if reset = '0' then                 -- asynchronous reset (active low)
       parity_calc := '0';
@@ -145,17 +154,24 @@ begin  -- RxUnit_impl
            if rd = '1' then
               Drdy <= '0';
               OErr <= '0';
-              data <= sd; 
+              data <= sd;
+              fin_transmission <= "11";
+              control_state <= "00";
+              compteur <= 7;
+
+           else
               -- il faut attendre un front montant de enable avant de mettre
               -- OErr a 1
-           else
-             OErr <= '1';
+             ask_for_enable_edge <= '1';
            end if;
-
-          fin_transmission <= "11";
-          control_state <= "00";
-          compteur <= 7;
-          
+           if top_enable = '1' then
+             ask_for_enable_edge <= '0';
+             OErr <= '1';
+             fin_transmission <= "11";
+             control_state <= "00";
+             compteur <= 7;
+           end if;
+           
         when others => null;
                        
       end case;
