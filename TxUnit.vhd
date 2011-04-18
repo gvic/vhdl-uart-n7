@@ -96,7 +96,7 @@ begin
       txd <= '1';
       state_tx <= "00";
       i := 7;
-      parity := '0';>
+      parity := '0';
       finished <= "00";
       started <= '0';
     elsif enable'event and enable = '1' then  -- rising clock edge
