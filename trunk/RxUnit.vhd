@@ -142,14 +142,16 @@ begin  -- RxUnit_impl
           if parity_recieved = parity_calc and tmprxd = '1' then
             FErr <= '0';
             Drdy <= '1';
-        
+            control_state <= "11";
+            
           else
             FErr <= '1';
             Drdy <= '0';
+            fin_transmission <= "11";
+            control_state <= "00";
+            compteur <= 7;
           end if;
 
-          control_state <= "11";
-          
         when "11" =>                    -- on attent un front montant d'horloge
            if rd = '1' then
               Drdy <= '0';

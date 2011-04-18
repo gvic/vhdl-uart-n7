@@ -1,7 +1,6 @@
 library IEEE;
 use IEEE.std_logic_1164.all;
 use work.n7.all;
-use work.pack_uart.all;
 
 entity testRxUnit0x13 is
  -- test d'une reception pb parité 
@@ -67,7 +66,7 @@ begin
     end loop; 
  
     wait until enableTX = '1';
-    rxd <= not parite(message); -- bit de parité (faux)
+    rxd <= not '1'; -- bit de parité (faux)
     wait until enableTX = '0';
 	 
     wait until enableTX = '1';
