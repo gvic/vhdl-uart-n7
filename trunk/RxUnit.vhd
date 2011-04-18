@@ -21,10 +21,13 @@ architecture RxUnit_impl of RXUnit is
 
   signal tmpclk : std_logic;
   signal tmprxd : std_logic;
-  signal fin_transmission : std_logic_vector(1 downto 0);
+  signal fin_transmission : std_logic_vector(1 downto 0) := "00";
   signal active_controller : std_logic := '0';  -- booleen pour demarer l'automate du controller
   signal cpt_state : std_logic_vector(2 downto 0) := "000";  -- code les etats de l'automate
 
+  signal DRdyPerso : std_logic := '0';
+  signal FErrPerso : std_logic := '0';
+  
   signal control_state : std_logic_vector(1 downto 0) := "00";
   signal compteur : integer := 7;     -- needed for counting the 8 bits on tmprxd
 
@@ -33,8 +36,11 @@ architecture RxUnit_impl of RXUnit is
 
   signal sd : std_logic_vector(7 downto 0) := "00000000";  -- on stock le message recu dans ce signal avant de le transmettre au pocesseur
 
-
 begin  -- RxUnit_impl
+
+  -- Because I wan't to read DRdy
+  DRdy <= DRdyPerso;
+  FErr <= FErrPerso;
   
   p_compteur16: process (enable, reset)
     variable cptBit : integer := 0;     -- compte le nombre de bit recu
@@ -47,23 +53,26 @@ begin  -- RxUnit_impl
       tmprxd <= '0';
       tmpclk <= '0';
       active_controller <= '0';
-      
+      DRdyPerso <= '0';
+      OErr <= '0';
+      FErrPerso <= '0';
+      data <= "00000000";
     elsif enable'event and enable = '1' then  -- rising clock edge
       cptClk := cptClk + 1;
       active_controller <= '0';
-      if ask_for_enable_edge = '1' then
-        top_enable <= '1';
-      else
-        top_enable <= '0';
-      end if;
+      --if ask_for_enable_edge = '1' then
+      --  top_enable <= '1';
+      --else
+      --  top_enable <= '0';
+      --end if;
       case cpt_state is
         
         when "000" =>
           if rxd = '0' then
             cpt_state <= "001";
             cptClk := 0;
-          else
-            cpt_state <= "000";
+          --else
+          --  cpt_state <= "000";
           end if;
           
         when "001" =>                   -- start bit reception
@@ -74,10 +83,11 @@ begin  -- RxUnit_impl
             active_controller <= '1';
           else
             tmpclk <= '0';
-            cpt_state <= "001";
+            --cpt_state <= "001";
           end if;
           
         when "010" =>                   -- Etat fin transmission
+          OErr <= '0';
           if cptClk > 15 then           
             tmpclk <= '1';
             cptClk := 0;
@@ -86,9 +96,33 @@ begin  -- RxUnit_impl
           else
             tmpclk <= '0';
           end if;
-          if fin_transmission = "11" then
+          
+          if DRdyPerso = '1' then            -- Data received  without errors
+            -- waiting for rd!
+            if rd = '1' then
+              DRdyPerso <= '0';
+              data <= sd;               -- Tranfer data to CPU
+              cpt_state <= "000";
+            elsif rd = '0' then
+              DRdyPerso <= '0';
+              OErr <= '1';
+              cpt_state <= "000";
+            end if;
+          end if;
+
+          if FErrPerso = '1' then
+            FErrPerso <= '0';
             cpt_state <= "000";
           end if;
+          
+          if fin_transmission = "11" then
+            FErrPerso <= '0';
+            Drdy <= '1';            
+          elsif fin_transmission = "01" then
+            FErrPerso <= '1';
+            Drdy <= '0';                        
+          end if;
+
           
         when "011" =>                   
           cpt_state <= "000";
@@ -116,13 +150,12 @@ begin  -- RxUnit_impl
       parity_recieved := '0';
       compteur <= 7;
       control_state <= "00";
-      DRdy <= '0';
-      OErr <= '0';
-      FErr <= '0';
+      fin_transmission <= "00";
     elsif tmpclk'event and tmpclk = '1' then  -- rising clock edge
       case control_state is
         
         when "00" =>                      -- Waiting for start bit
+          fin_transmission <= "00";
           if tmprxd = '0' and compteur = 7 then
             control_state <= "01";      -- Switch to datas reception control_state
             -- on ne garde pas le bit de start, on conserve que les données réellement utiles
@@ -133,46 +166,45 @@ begin  -- RxUnit_impl
             parity_recieved := tmprxd;  -- on recupere le bit de parité envoyé
             control_state <= "10";
           else                -- Handled data reception
-            sd(compteur) <= rxd;
+            sd(compteur) <= tmprxd;
             parity_calc := parity_calc xor tmprxd;
             compteur <= compteur - 1;
           end if;
           
         when "10" =>                    -- Stop bit reception control_state
           if parity_recieved = parity_calc and tmprxd = '1' then
-            FErr <= '0';
-            Drdy <= '1';
-            control_state <= "11";
-            
+            fin_transmission <= "01";          
+            --FErr <= '0';
+            --Drdy <= '1';            
           else
-            FErr <= '1';
-            Drdy <= '0';
+            --FErr <= '1';
+            --Drdy <= '0';
             fin_transmission <= "11";
-            control_state <= "00";
-            compteur <= 7;
           end if;
-
+          control_state <= "00";
+          compteur <= 7;
+          
         when "11" =>                    -- on attent un front montant d'horloge
-           if rd = '1' then
-              Drdy <= '0';
-              OErr <= '0';
-              data <= sd;
-              fin_transmission <= "11";
-              control_state <= "00";
-              compteur <= 7;
+           --if rd = '1' then
+           --   Drdy <= '0';
+           --   --OErr <= '0';
+           --   data <= sd;
+           --   fin_transmission <= "10";
+           --   control_state <= "00";
+           --   compteur <= 7;
 
-           else
-              -- il faut attendre un front montant de enable avant de mettre
-              -- OErr a 1
-             ask_for_enable_edge <= '1';
-           end if;
-           if top_enable = '1' then
-             ask_for_enable_edge <= '0';
-             OErr <= '1';
-             fin_transmission <= "11";
-             control_state <= "00";
-             compteur <= 7;
-           end if;
+           --else
+           --   -- il faut attendre un front montant de enable avant de mettre
+           --   -- OErr a 1
+           --  ask_for_enable_edge <= '1';
+           --end if;
+           --if top_enable = '1' then
+           --  ask_for_enable_edge <= '0';
+           --  OErr <= '1';
+           --  fin_transmission <= "11";
+           --  control_state <= "00";
+           --  compteur <= 7;
+           --end if;
            
         when others => null;
                        
