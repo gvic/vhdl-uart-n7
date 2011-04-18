@@ -82,7 +82,7 @@ begin  -- UARTunit_arch
   -- a completer par la connexion des differents composants  
   uniteHorloge: clkUnit port map (clk, reset, enableTX, enableRX);
   uniteEmission: TxUnit port map (clk, reset, enableTX, ecriture, TxD, regE, bufE, data_in);
-  uniteReception: RxUnit port map (clk, reset, enableRX, rd, RxD, data_out);
+  uniteReception: RxUnit port map (clk, reset, enableRX, rd, RxD, donnees_recues, FErr, OErr, DRdy);
   uniteControl: ctrlUnit port map (clk, reset, rd, wr, DRdy, FErr, OErr, bufE, regE, IntR, IntT, registre_controle);
 
 
