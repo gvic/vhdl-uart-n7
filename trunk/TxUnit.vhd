@@ -1,4 +1,4 @@
--- Time-stamp: <18/04/2011 09:09 paul.bonaud@etu.enseeiht.fr>
+-- Time-stamp: <18/04/2011 09:55 paul.bonaud@etu.enseeiht.fr>
 Library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.std_logic_arith.all;
@@ -96,7 +96,7 @@ begin
       txd <= '1';
       state_tx <= "00";
       i := 7;
-      parity := '0';
+      parity := '0';>
       finished <= "00";
       started <= '0';
     elsif enable'event and enable = '1' then  -- rising clock edge
