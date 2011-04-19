@@ -35,6 +35,9 @@ architecture RxUnit_impl of RXUnit is
   signal top_enable : std_logic := '0';
 
   signal sd : std_logic_vector(7 downto 0) := "00000000";  -- on stock le message recu dans ce signal avant de le transmettre au pocesseur
+    
+	 signal parity_calc : std_logic := '0';
+    signal parity_recieved : std_logic;
 
 begin  -- RxUnit_impl
 
@@ -68,6 +71,10 @@ begin  -- RxUnit_impl
       case cpt_state is
         
         when "000" =>
+			FErrPerso <= '0';
+			DRdyPerso <= '0';
+			OErr <= '0';
+		  
           if rxd = '0' then
             cpt_state <= "001";
             cptClk := 0;
@@ -89,22 +96,29 @@ begin  -- RxUnit_impl
         when "010" =>                   -- Etat fin transmission
           OErr <= '0';
           if cptClk > 15 then           
+			   tmprxd <= rxd; -- Receive bit
             tmpclk <= '1';
             cptClk := 0;
             -- cpt_state <= "011";
-            tmprxd <= rxd;
           else
             tmpclk <= '0';
           end if;
+			           
+          if fin_transmission = "01" then
+            FErrPerso <= '0';
+            DrdyPerso <= '1';            
+          elsif fin_transmission = "11" then
+            FErrPerso <= '1';
+            DrdyPerso <= '0';                        
+          end if;
           
           if DRdyPerso = '1' then            -- Data received  without errors
-            -- waiting for rd!
+            DRdyPerso <= '0';
+				-- waiting for rd!
             if rd = '1' then
-              DRdyPerso <= '0';
               data <= sd;               -- Tranfer data to CPU
               cpt_state <= "000";
             elsif rd = '0' then
-              DRdyPerso <= '0';
               OErr <= '1';
               cpt_state <= "000";
             end if;
@@ -114,15 +128,6 @@ begin  -- RxUnit_impl
             FErrPerso <= '0';
             cpt_state <= "000";
           end if;
-          
-          if fin_transmission = "11" then
-            FErrPerso <= '0';
-            Drdy <= '1';            
-          elsif fin_transmission = "01" then
-            FErrPerso <= '1';
-            Drdy <= '0';                        
-          end if;
-
           
         when "011" =>                   
           cpt_state <= "000";
@@ -141,13 +146,10 @@ begin  -- RxUnit_impl
   -- inputs : tmpclk
   -- outputs: 
   p_control: process (tmpclk,reset)
-    variable parity_calc : std_logic := '0';
-    variable parity_recieved : std_logic;
-
   begin  -- process p_control
     if reset = '0' then                 -- asynchronous reset (active low)
-      parity_calc := '0';
-      parity_recieved := '0';
+      parity_calc <= '0';
+      parity_recieved <= '0';
       compteur <= 7;
       control_state <= "00";
       fin_transmission <= "00";
@@ -163,11 +165,11 @@ begin  -- RxUnit_impl
           
         when "01" =>                    -- Reception of data bits and parity bit control_state
           if compteur = -1 then
-            parity_recieved := tmprxd;  -- on recupere le bit de parité envoyé
+            parity_recieved <= tmprxd;  -- on recupere le bit de parité envoyé
             control_state <= "10";
           else                -- Handled data reception
             sd(compteur) <= tmprxd;
-            parity_calc := parity_calc xor tmprxd;
+            parity_calc <= parity_calc xor tmprxd;
             compteur <= compteur - 1;
           end if;
           
