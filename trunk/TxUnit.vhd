@@ -8,8 +8,7 @@ entity TxUnit is
   port (clk, reset  : in std_logic;
         enable      : in std_logic;
         ld          : in std_logic;     -- load
-        txd         : out std_logic;
-        
+        txd         : out std_logic;        
         regE        : out std_logic;    -- Register Empty?
         bufE        : out std_logic;    -- Buffer Empty?
         data        : in std_logic_vector(7 downto 0)
@@ -57,9 +56,7 @@ begin
             bufEPerso <= '1';
             once <= '1';
           end if;
-
           state <= "11";
-          
         when "11" =>                    -- Wait other automate (idle)
           if ld = '1' and bufEPerso = '1' then
             state <= "00";
@@ -80,7 +77,6 @@ begin
             startTx <= '0';
             once <= '1';
           end if;          
-          
         when others => null;
       end case;
     end if;
@@ -125,6 +121,7 @@ begin
             state_tx <= "00";
             finished <= "11";
             started <= '0';
+            parity := '0';              -- Don't forget to reset parity !
           when others => null;
         end case;
       end if;
