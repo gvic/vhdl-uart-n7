@@ -3,8 +3,7 @@ use IEEE.std_logic_1164.all;
 use IEEE.std_logic_arith.all;
 use IEEE.std_logic_unsigned.all;
 
-entity RxUnit is
-  
+entity RxUnit is  
   port (
     clk, reset       : in  std_logic;
     enable           : in  std_logic;
@@ -13,7 +12,6 @@ entity RxUnit is
     data             : out std_logic_vector(7 downto 0);
     FErr, OErr, DRdy : out std_logic
     );
-
 end RXUnit;
 
 
@@ -33,9 +31,6 @@ architecture RxUnit_impl of RXUnit is
   signal top_enable : std_logic := '0';
 
   signal sd : std_logic_vector(7 downto 0) := "00000000";  -- on stock le message recu dans ce signal avant de le transmettre au pocesseur
-  
-  signal parity_calc : std_logic := '0';
-  signal parity_recieved : std_logic := '0';
 begin  -- RxUnit_impl
 
   -- Because I wan't to read DRdy
@@ -128,10 +123,12 @@ begin  -- RxUnit_impl
   -- inputs : tmpclk
   -- outputs: 
   p_control: process (tmpclk,reset)
+    signal parity_calc : std_logic := '0';
+    signal parity_recieved : std_logic := '0';
   begin  -- process p_control
     if reset = '0' then                 -- asynchronous reset (active low)
-      parity_calc <= '0';
-      parity_recieved <= '0';
+      parity_calc := '0';
+      parity_recieved := '0';
       compteur <= 7;
       control_state <= "00";
       fin_transmission <= "00";
@@ -146,11 +143,11 @@ begin  -- RxUnit_impl
           
         when "01" =>                    -- Reception of data bits and parity bit control_state
           if compteur = -1 then
-            parity_recieved <= tmprxd;  -- on recupere le bit de parité envoyé
+            parity_recieved := tmprxd;  -- on recupere le bit de parité envoyé
             control_state <= "10";
           else                -- Handled data reception
             sd(compteur) <= tmprxd;
-            parity_calc <= parity_calc xor tmprxd;
+            parity_calc := parity_calc xor tmprxd;
             compteur <= compteur - 1;
           end if;
           
