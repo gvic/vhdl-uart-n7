@@ -64,7 +64,6 @@ architecture UARTunit_arch of UARTunit is
   signal donnees_recues : std_logic_vector(7 downto 0);
   signal registre_controle : std_logic_vector(7 downto 0);
 
-  -- a completer par les signaux internes manquants
   signal enableTX   :    std_logic;
   signal enableRX   :    std_logic;
   signal regE       :    std_logic;
@@ -79,7 +78,7 @@ begin  -- UARTunit_arch
               else registre_controle when lecture = '1' and addr = "01"
               else "00000000";
   
-  -- a completer par la connexion des differents composants  
+  -- Connect and assemble all Units
   uniteHorloge: clkUnit port map (clk, reset, enableTX, enableRX);
   uniteEmission: TxUnit port map (clk, reset, enableTX, ecriture, TxD, regE, bufE, data_in);
   uniteReception: RxUnit port map (clk, reset, enableRX, rd, RxD, donnees_recues, FErr, OErr, DRdy);

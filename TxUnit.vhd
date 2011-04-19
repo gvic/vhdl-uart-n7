@@ -80,7 +80,7 @@ begin
             startTx <= '0';
             once <= '1';
           end if;          
-                      
+          
         when others => null;
       end case;
     end if;
