@@ -123,8 +123,8 @@ begin  -- RxUnit_impl
   -- inputs : tmpclk
   -- outputs: 
   p_control: process (tmpclk,reset)
-    signal parity_calc : std_logic := '0';
-    signal parity_recieved : std_logic := '0';
+    variable parity_calc : std_logic := '0';
+    variable parity_recieved : std_logic := '0';
   begin  -- process p_control
     if reset = '0' then                 -- asynchronous reset (active low)
       parity_calc := '0';
