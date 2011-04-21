@@ -11,7 +11,8 @@ entity UARTunit is
     IntT       : out std_logic;         
     addr       : in  std_logic_vector(1 downto 0);
     data_in    : in  std_logic_vector(7 downto 0);
-    data_out   : out std_logic_vector(7 downto 0));
+    data_out   : out std_logic_vector(7 downto 0);
+	 state_tx   : out std_logic_vector(1 downto 0));
 end UARTunit;
 architecture UARTunit_arch of UARTunit is
 
@@ -25,7 +26,8 @@ architecture UARTunit_arch of UARTunit is
       txd        : out  std_logic;
       regE       : out  std_logic;
       bufE       : out  std_logic;
-      data       : in   std_logic_vector(7 downto 0)
+      data       : in   std_logic_vector(7 downto 0);
+		state_tx2   : out std_logic_vector(1 downto 0)
       );
   end component;
 
@@ -80,7 +82,7 @@ begin  -- UARTunit_arch
   
   -- Connect and assemble all Units
   uniteHorloge: clkUnit port map (clk, reset, enableTX, enableRX);
-  uniteEmission: TxUnit port map (clk, reset, enableTX, ecriture, TxD, regE, bufE, data_in);
+  uniteEmission: TxUnit port map (clk, reset, enableTX, ecriture, TxD, regE, bufE, data_in,state_tx);
   uniteReception: RxUnit port map (clk, reset, enableRX, rd, RxD, donnees_recues, FErr, OErr, DRdy);
   uniteControl: ctrlUnit port map (clk, reset, rd, wr, DRdy, FErr, OErr, bufE, regE, IntR, IntT, registre_controle);
 
