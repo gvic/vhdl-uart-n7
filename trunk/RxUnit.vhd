@@ -98,6 +98,12 @@ begin  -- RxUnit_impl
             if rd = '1' then
               data <= sd;               -- Tranfer data to CPU
               cpt_state <= "000";
+				  
+				  cptBit := 0;
+				  tmprxd <= '0';
+              tmpclk <= '0';
+				  OErr <= '0';
+				  
             elsif rd = '0' then
               OErr <= '1';
               cpt_state <= "000";
@@ -163,6 +169,8 @@ begin  -- RxUnit_impl
           end if;
           control_state <= "00";
           compteur <= 7;
+			 parity_calc := '0';
+			 parity_recieved := '0';
           
         when others => null;
                        
