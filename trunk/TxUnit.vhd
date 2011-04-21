@@ -62,7 +62,9 @@ begin
           state <= "11";
         when "11" =>                    -- Wait other automate (idle)
           if ld = '1' and bufEPerso = '1' then
-            state <= "00";
+				buf <= data;
+				bufEPerso <= '0';            
+				state <= "01";
           end if;
 
           if bufEPerso = '0' then
