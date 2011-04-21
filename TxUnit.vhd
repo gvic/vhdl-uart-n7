@@ -11,7 +11,8 @@ entity TxUnit is
         txd         : out std_logic;        
         regE        : out std_logic;    -- Register Empty?
         bufE        : out std_logic;    -- Buffer Empty?
-        data        : in std_logic_vector(7 downto 0)
+        data        : in std_logic_vector(7 downto 0);
+		  state_tx2	  : out std_logic_vector(1 downto 0)
         );
 end TxUnit;
 
@@ -31,6 +32,8 @@ begin
   -- initiate personnal signals
   bufE <= bufEPerso;
   regE <= regEPerso;
+  
+  state_tx2 <= state_tx;
   
   -- purpose: Buffer and Register states
   -- type   : sequential
